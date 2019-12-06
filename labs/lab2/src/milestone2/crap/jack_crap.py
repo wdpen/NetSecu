@@ -71,7 +71,7 @@ class CrapProtocolFather(StackingProtocol):
 			self.sign_key = serialization.load_pem_private_key(fi.read(), password=None, backend=default_backend())
 		self.sign_key_public = self.sign_key.public_key()
 		#generate nonce
-		self.nonce=random.randint(0,2**16-1)
+		self.nonce=random.randint(0,2**32-1)
 		#load the cert
 		with open(self.cert_filepath+'20194_root.cert', 'rb') as f:
 			self.cert_root=x509.load_pem_x509_certificate(f.read(), default_backend())
@@ -90,6 +90,7 @@ class CrapProtocolFather(StackingProtocol):
 		print('CRAP: finish start_generate')
 
 	def shared_key_calu(self, inpublickey_bytes):
+		print('CRAP: calu the shared key')
 		inpublickey=serialization.load_pem_public_key(inpublickey_bytes, default_backend())
 		self.shared_key = self.ecdh_private_key.exchange(ec.ECDH(), inpublickey)
 
@@ -204,7 +205,7 @@ class CrapClientProtocol(CrapProtocolFather):
 							return							
 						print('CRAP: client verified the signature of the pubkB')
 						#verif the nonce signature
-						if not self.verify_signature(self.received_cert.public_key(), recvpack.nonceSignature, bytes(self.nonce)):
+						if not self.verify_signature(self.received_cert.public_key(), recvpack.nonceSignature, str(self.nonce).encode('ASCII')):
 							print('CRAP: client CANNOT verified the signature of the nonce')
 							self.dropconnection()
 							return
@@ -224,14 +225,15 @@ class CrapClientProtocol(CrapProtocolFather):
 						#calculate the shared key, hash and the iva ivb etc for the datapacket transmission
 						self.shared_key_calu(recvpack.pk)
 						self.hash123_calu()
-						#print(self.hash123)
+						print(self.hash123)
 						self.iv_self=self.hash123[0][:12]
 						self.iv_received=self.hash123[0][12:24]
 						self.encryption_method=AESGCM(self.hash123[1][:16])
 						self.decryption_method=AESGCM(self.hash123[2][:16])
 
 						noncesign = self.sign_key.sign(
-							bytes(recvpack.nonce),
+							#bytes(recvpack.nonce),
+							str(recvpack.nonce).encode('ASCII').
 							padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
 							hashes.SHA256()
 							)								
@@ -308,13 +310,13 @@ class CrapServerProtocol(CrapProtocolFather):
 						print('CRAP: server verified the received certificate')
 
 						self.shared_key_calu(recvpack.pk)						
-						#sign the receive nonce with self.sign_key							
+						#sign the receive nonce with self.sign_key	
 						noncesign = self.sign_key.sign(
-							bytes(recvpack.nonce),
+							#bytes(recvpack.nonce),
+							str(recvpack.nonce).encode(),
 							padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
 							hashes.SHA256()
 							)
-						
 						sendpacket=HandshakePacket(
 							status=HandshakePacket.SUCCESS,
 							pk=self.ecdh_public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo),
@@ -333,10 +335,12 @@ class CrapServerProtocol(CrapProtocolFather):
 							print('CRAP: received correpted handshakepacket, drop')
 							self.dropconnection()
 							return
-						if self.verify_signature(self.received_cert.public_key(), recvpack.nonceSignature, bytes(self.nonce)):											
+						#if 1:
+						if self.verify_signature(self.received_cert.public_key(), recvpack.nonceSignature, str(self.nonce).encode()):											
 							print('CRAP: server verified the signature of the nonce')
 							#calculate the  hash and the iva ivb etc for the datapacket transmission
 							self.hash123_calu()
+							print(self.hash123)
 							self.iv_received=self.hash123[0][:12]
 							self.iv_self=self.hash123[0][12:24]
 							self.encryption_method=AESGCM(self.hash123[2][:16])
