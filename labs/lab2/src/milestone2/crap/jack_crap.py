@@ -50,7 +50,7 @@ class CrapProtocolFather(StackingProtocol):
 		self.cert_root=None
 		self.cert_team=None
 		self.cert_team_list=[]   #each is serializered cert_team
-		self.cert_filepath='/home/jding/.playground/connectors/crap/'
+		self.cert_filepath='/home/student_20194/.playground/connectors/crap/'
 		self.signature=None
 		self.received_cert=None
 		self.received_certchain=[]
@@ -253,7 +253,7 @@ class CrapClientProtocol(CrapProtocolFather):
 		print('CRAP: client connection made')
 		self.transport=transport
 		self.address_connect_agent=transport.get_extra_info("peername")[0]
-		self.address_connect_agent='20194.3.6.9'
+		#self.address_connect_agent='20194.3.6.9'
 		##########################################print(self.address_connect_agent)
 		sendpacket=HandshakePacket(
 			status=HandshakePacket.NOT_STARTED,
@@ -275,7 +275,7 @@ class CrapServerProtocol(CrapProtocolFather):
 		print('CRAP: server connection made')	
 		self.transport=transport
 		self.address_connect_agent=transport.get_extra_info("peername")[0]
-		self.address_connect_agent='20194.3.6.9'
+		#self.address_connect_agent='20194.3.6.9'
 
 	def data_received(self, data):
 		print('CRAP: server received sth')
