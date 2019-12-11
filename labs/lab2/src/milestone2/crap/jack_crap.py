@@ -50,7 +50,7 @@ class CrapProtocolFather(StackingProtocol):
 		self.cert_root=None
 		self.cert_team=None
 		self.cert_team_list=[]   #each is serializered cert_team
-		self.cert_filepath='/home/student_20194/.playground/connectors/crap/'
+		self.cert_filepath='/home/jding/.playground/connectors/crap/'
 		self.signature=None
 		self.received_cert=None
 		self.received_certchain=[]
@@ -71,7 +71,7 @@ class CrapProtocolFather(StackingProtocol):
 			self.sign_key = serialization.load_pem_private_key(fi.read(), password=None, backend=default_backend())
 		self.sign_key_public = self.sign_key.public_key()
 		#generate nonce
-		self.nonce=random.randint(0,2**32-1)
+		self.nonce=random.randint(0,2**8-1)
 		#load the cert
 		with open(self.cert_filepath+'20194_root.cert', 'rb') as f:
 			self.cert_root=x509.load_pem_x509_certificate(f.read(), default_backend())
@@ -228,15 +228,16 @@ class CrapClientProtocol(CrapProtocolFather):
 						print(self.hash123)
 						self.iv_self=self.hash123[0][:12]
 						self.iv_received=self.hash123[0][12:24]
+
 						self.encryption_method=AESGCM(self.hash123[1][:16])
 						self.decryption_method=AESGCM(self.hash123[2][:16])
-
+						
 						noncesign = self.sign_key.sign(
 							#bytes(recvpack.nonce),
-							str(recvpack.nonce).encode('ASCII').
+							str(recvpack.nonce).encode(),
 							padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
 							hashes.SHA256()
-							)								
+							)		
 						sendpacket=HandshakePacket(
 							status=HandshakePacket.SUCCESS,
 							nonceSignature=noncesign
@@ -252,7 +253,7 @@ class CrapClientProtocol(CrapProtocolFather):
 		print('CRAP: client connection made')
 		self.transport=transport
 		self.address_connect_agent=transport.get_extra_info("peername")[0]
-		#self.address_connect_agent='20194.3.6.9'
+		self.address_connect_agent='20194.3.6.9'
 		##########################################print(self.address_connect_agent)
 		sendpacket=HandshakePacket(
 			status=HandshakePacket.NOT_STARTED,
@@ -274,7 +275,7 @@ class CrapServerProtocol(CrapProtocolFather):
 		print('CRAP: server connection made')	
 		self.transport=transport
 		self.address_connect_agent=transport.get_extra_info("peername")[0]
-		#self.address_connect_agent='20194.3.6.9'
+		self.address_connect_agent='20194.3.6.9'
 
 	def data_received(self, data):
 		print('CRAP: server received sth')
@@ -309,7 +310,8 @@ class CrapServerProtocol(CrapProtocolFather):
 							return
 						print('CRAP: server verified the received certificate')
 
-						self.shared_key_calu(recvpack.pk)						
+						self.shared_key_calu(recvpack.pk)
+
 						#sign the receive nonce with self.sign_key	
 						noncesign = self.sign_key.sign(
 							#bytes(recvpack.nonce),
